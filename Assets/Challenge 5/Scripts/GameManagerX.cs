@@ -9,31 +9,34 @@ public class GameManagerX : MonoBehaviour
 {
     public TextMeshProUGUI scoreText;
     public TextMeshProUGUI gameOverText;
+    public TextMeshProUGUI timeText;
     public GameObject titleScreen;
     public Button restartButton; 
 
     public List<GameObject> targetPrefabs;
 
     private int score;
-    private float spawnRate = 1.5f;
+    private int timeRemaining = 60;
+    private float spawnRate = 2.0f;
     public bool isGameActive;
 
     private float spaceBetweenSquares = 2.5f; 
-    private float minValueX = -3.75f; //  x value of the center of the left-most square
-    private float minValueY = -3.75f; //  y value of the center of the bottom-most square
+    private float minValueX = -3.75f;
+    private float minValueY = -3.75f;
     
-    // Start the game, remove title screen, reset score, and adjust spawnRate based on difficulty button clicked
-    public void StartGame()
+    public void StartGame(int difficulty)
     {
-        spawnRate /= 5;
+        spawnRate = spawnRate / difficulty;
         isGameActive = true;
+        timeRemaining = 60;
+        UpdateTimeDisplay();
         StartCoroutine(SpawnTarget());
+        StartCoroutine(CountdownTimer());
         score = 0;
         UpdateScore(0);
         titleScreen.SetActive(false);
     }
 
-    // While game is active spawn a random target
     IEnumerator SpawnTarget()
     {
         while (isGameActive)
@@ -70,14 +73,39 @@ public class GameManagerX : MonoBehaviour
     public void UpdateScore(int scoreToAdd)
     {
         score += scoreToAdd;
-        scoreText.text = "score";
+        scoreText.text = "Score: " + score;
+    }
+
+    // Update time display
+    void UpdateTimeDisplay()
+    {
+        timeText.text = "Time: " + timeRemaining;
+    }
+
+    // Countdown timer that decreases every second and triggers game over at 0
+    IEnumerator CountdownTimer()
+    {
+        while (isGameActive && timeRemaining > 0)
+        {
+            yield return new WaitForSeconds(1f);
+            if (isGameActive)
+            {
+                timeRemaining--;
+                UpdateTimeDisplay();
+
+                if (timeRemaining <= 0)
+                {
+                    GameOver();
+                }
+            }
+        }
     }
 
     // Stop game, bring up game over text and restart button
     public void GameOver()
     {
         gameOverText.gameObject.SetActive(true);
-        restartButton.gameObject.SetActive(false);
+        restartButton.gameObject.SetActive(true);
         isGameActive = false;
     }
 

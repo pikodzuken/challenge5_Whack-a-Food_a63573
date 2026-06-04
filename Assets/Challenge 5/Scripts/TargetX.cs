@@ -1,6 +1,7 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.InputSystem;
 
 public class TargetX : MonoBehaviour
 {
@@ -9,7 +10,7 @@ public class TargetX : MonoBehaviour
     public int pointValue;
     public GameObject explosionFx;
 
-    public float timeOnScreen = 1.0f;
+    public float timeOnScreen = 4.0f;
 
     private float minValueX = -3.75f; // the x value of the center of the left-most square
     private float minValueY = -3.75f; // the y value of the center of the bottom-most square
@@ -22,18 +23,32 @@ public class TargetX : MonoBehaviour
         gameManagerX = GameObject.Find("Game Manager").GetComponent<GameManagerX>();
 
         transform.position = RandomSpawnPosition(); 
-        StartCoroutine(RemoveObjectRoutine()); // begin timer before target leaves screen
+        StartCoroutine(RemoveObjectRoutine()); // Destroy food after timeOnScreen if not clicked
 
     }
 
     // When target is clicked, destroy it, update score, and generate explosion
-    private void OnMouseEnter()
+    void Update()
     {
+        // Only respond to actual mouse clicks, not continuous hovering
+        if (Mouse.current.leftButton.wasPressedThisFrame)
+        {
+            Ray ray = Camera.main.ScreenPointToRay(Mouse.current.position.ReadValue());
+            RaycastHit hitInfo;
+
+            if (Physics.Raycast(ray, out hitInfo))
+            {
+                if (hitInfo.transform == transform)
+                {
+                    Destroy(gameObject);
+                    gameManagerX.UpdateScore(pointValue);
+                    Explode();
+                }
+            }
+        }
         if (gameManagerX.isGameActive)
         {
-            Destroy(gameObject);
-            gameManagerX.UpdateScore(pointValue);
-            Explode();
+            
         }
                
     }
@@ -56,16 +71,17 @@ public class TargetX : MonoBehaviour
     }
 
 
-    // If target that is NOT the bad object collides with sensor, trigger game over
+    // If target collides with the sensor, trigger game over for good objects and destroy the target
     private void OnTriggerEnter(Collider other)
     {
-        Destroy(gameObject);
-
-        if (other.gameObject.CompareTag("Sensor") && !gameObject.CompareTag("Bad"))
+        if (other.gameObject.CompareTag("Sensor"))
         {
-            gameManagerX.GameOver();
-        } 
-
+            if (!gameObject.CompareTag("Bad"))
+            {
+                gameManagerX.GameOver();
+            }
+            Destroy(gameObject);
+        }
     }
 
     // Display explosion particle at object's position
@@ -74,7 +90,7 @@ public class TargetX : MonoBehaviour
         Instantiate(explosionFx, transform.position, explosionFx.transform.rotation);
     }
 
-    // After a delay, Moves the object behind background so it collides with the Sensor object
+    // After timeOnScreen seconds, move the object toward the sensor so missed targets trigger game over
     IEnumerator RemoveObjectRoutine ()
     {
         yield return new WaitForSeconds(timeOnScreen);
@@ -82,7 +98,5 @@ public class TargetX : MonoBehaviour
         {
             transform.Translate(Vector3.forward * 5, Space.World);
         }
-
     }
-
 }
